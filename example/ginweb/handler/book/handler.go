@@ -7,6 +7,10 @@ import (
 
 // Handler 书籍管理
 //
+// Handler 的4个方法，分别对应4个接口文档。
+// 这里写的 @catalog @header @resp 三行注释为通用注释，
+// 通用注释定义在文件顶部，该文件下的每个接口文档都会包含通用注释。
+//
 // @catalog 测试文档/书籍
 // @header Authorization string true "bearer {{TOKEN}}" "用户登录凭证"
 // @resp comm.HttpCode{}
@@ -19,7 +23,7 @@ type Handler struct {
 // @url GET {{BASEURL}}/api/v1/book/list
 // @param	page		int	true	""	"第几页"
 // @param	page_size	int	true	""	"每页显示条数"
-// @response ListRsp{}
+// @resp ListRsp{}
 func (h *Handler) List() {
 }
 
@@ -27,7 +31,7 @@ func (h *Handler) List() {
 //
 // @url GET {{BASEURL}}/api/v1/book/detail/:id
 // @param :id int true "" "书籍 id"
-// @response Detail{}
+// @resp Detail{}
 func (h *Handler) Detail() {
 }
 
