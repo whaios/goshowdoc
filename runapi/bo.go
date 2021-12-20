@@ -107,15 +107,16 @@ func (p *Page) ToMap() map[string]string {
 	return m
 }
 
+// 请求方式与runapi工具保持一致，使用全小写
 const (
-	MethodPost    = "POST"
-	MethodGet     = "GET"
-	MethodPut     = "PUT"
-	MethodDelete  = "DELETE"
-	MethodHead    = "HEAD"
-	MethodConnect = "CONNECT"
-	MethodOptions = "OPTIONS"
-	MethodTrace   = "TRACE"
+	MethodPost    = "post"
+	MethodGet     = "get"
+	MethodPut     = "put"
+	MethodDelete  = "delete"
+	MethodHead    = "head"
+	MethodConnect = "connect"
+	MethodOptions = "options"
+	MethodTrace   = "trace"
 )
 
 const (

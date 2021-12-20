@@ -127,7 +127,7 @@ func (p *ApiDoc) ParseUrlComment(commentLine string) error {
 	if len(fields) != 2 {
 		return fmt.Errorf("无法解析 url 注释 \"%s\"", commentLine)
 	}
-	p.Request.Method = strings.ToUpper(fields[0])
+	p.Request.Method = strings.ToLower(fields[0]) // 和runapi保持一致使用小写
 	p.Request.Url = fields[1]
 	switch p.Request.Method {
 	case runapi.MethodPost:
