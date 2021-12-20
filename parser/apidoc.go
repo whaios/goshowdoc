@@ -203,7 +203,7 @@ func (p *ApiDoc) ParseParamComment(commentLine string) error {
 		return "0"
 	}
 	for _, field := range obj.AllFields() {
-		param := runapi.NewRequestParam(field.Name, field.Type, field.Value, requireVal(field.Required), field.Comment)
+		param := runapi.NewRequestParam(field.Name, field.Type, requireVal(field.Required), field.Value, field.Comment)
 		p.Request.Params = append(p.Request.Params, param)
 	}
 	if p.Request.ParamMode == runapi.ParamModeJson {

@@ -40,12 +40,12 @@ func TestApiDoc_ParseUrlComment(t *testing.T) {
 		doc := &ApiDoc{}
 		So(doc.ParseUrlComment("GET "+url), ShouldBeNil)
 		So(doc.Request.Url, ShouldEqual, url)
-		So(doc.Request.Method, ShouldEqual, "GET")
+		So(doc.Request.Method, ShouldEqual, runapi.MethodGet)
 		So(doc.Request.ParamMode, ShouldEqual, runapi.ParamModeUrlEncoded)
 
 		So(doc.ParseUrlComment("POST "+url), ShouldBeNil)
 		So(doc.Request.Url, ShouldEqual, url)
-		So(doc.Request.Method, ShouldEqual, "POST")
+		So(doc.Request.Method, ShouldEqual, runapi.MethodPost)
 		So(doc.Request.ParamMode, ShouldEqual, runapi.ParamModeJson)
 	})
 }

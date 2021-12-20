@@ -9,7 +9,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -202,7 +201,16 @@ func (p *Parser) ParseObject(typeName string, file *ast.File) (*Object, error) {
 			// `json:"name" validate:"required"`
 			tag = field.Tag.Value
 			required = strings.Contains(tag, "required")
-			jsonName = getJsonName(tag)
+
+			if jsonTag := getJsonTag(tag); jsonTag != "" {
+				var tagOpts tagOptions
+				jsonName, tagOpts = parseJsonTag(jsonTag)
+				if tagOpts.Contains("string") {
+					// json 标签中定义了类型转换
+					dataType = "string"
+				}
+			}
+
 			if jsonName == "" {
 				jsonName = name
 			}
@@ -304,21 +312,6 @@ func parseFieldType(expr ast.Expr) string {
 		return parseFieldType(star.X)
 	case *ast.InterfaceType:
 		return "interface{}"
-	}
-	return ""
-}
-
-var jsonTagRegexp = regexp.MustCompile(`json:"(.*?)"`)
-
-// getJsonTag 获取标签中关于json部分的定义
-func getJsonName(tag string) string {
-	matches := jsonTagRegexp.FindStringSubmatch(tag)
-	if len(matches) < 2 {
-		return ""
-	}
-	ss := strings.SplitN(matches[1], ",", 2)
-	if len(ss) > 0 {
-		return ss[0]
 	}
 	return ""
 }
