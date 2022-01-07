@@ -139,6 +139,7 @@ func main() {
 				&cli.StringFlag{
 					Name:  flagSchema,
 					Usage: "PostgreSQL 数据库模式",
+					Value: "public",
 				},
 				&cli.StringFlag{
 					Name:  flagCat,
