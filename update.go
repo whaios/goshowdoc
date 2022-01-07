@@ -17,7 +17,7 @@ func Update(searchDir string) {
 
 	max := len(p.Docs)
 	for i, doc := range p.Docs {
-		if err := runapi.UpdateByApi(doc.Catalog, doc.Title, doc.Order, apiDocToPageContent(doc)); err != nil {
+		if err := runapi.UpdateByApi(doc.Catalog, doc.Title, doc.Order, apiDocToPageContent(doc).String()); err != nil {
 			log.Error("更新文档[%s/%s]失败: %s", doc.Catalog, doc.Title, err.Error())
 			return
 		}

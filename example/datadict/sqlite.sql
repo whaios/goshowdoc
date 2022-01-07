@@ -1,0 +1,6 @@
+CREATE TABLE `employee` (
+    `id` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    `name` VARCHAR(50) NOT NULL,
+    `age` INTEGER NOT NULL,
+    `address` VARCHAR(255) NULL
+)
