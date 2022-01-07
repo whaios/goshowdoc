@@ -44,7 +44,7 @@ func main() {
 	app.Description = `项目地址： https://github.com/whaios/goshowdoc
 支持以下功能：
 1. 通过代码注释生成 API 接口文档。
-2. 自动化生成数据字典。
+2. 自动化生成数据字典，支持 mysql, postgres, sqlserver, sqlite3。
 3. 导出和导入 ShowDoc 项目。`
 	app.Version = Version
 

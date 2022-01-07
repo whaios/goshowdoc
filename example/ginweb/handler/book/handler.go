@@ -21,8 +21,8 @@ type Handler struct {
 //
 // @description 分页获取书籍列表
 // @url GET {{BASEURL}}/api/v1/book/list
-// @param	page		int	true	""	"第几页"
-// @param	page_size	int	true	""	"每页显示条数"
+// @query	page		int	true	""	"第几页"
+// @query	page_size	int	true	""	"每页显示条数"
 // @resp ListRsp{}
 func (h *Handler) List() {
 }
@@ -30,7 +30,7 @@ func (h *Handler) List() {
 // Detail 获取指定书籍详情
 //
 // @url GET {{BASEURL}}/api/v1/book/detail/:id
-// @param :id int true "" "书籍 id"
+// @query :id int true "" "书籍 id"
 // @resp Detail{}
 func (h *Handler) Detail() {
 }
@@ -48,7 +48,7 @@ func (h *Handler) CreateOrUpdate() {
 // @catalog 管理
 // @title 删除书籍
 // @url DELETE {{BASEURL}}/api/v1/book/del/:id
-// @param :id int true "" "书籍 id"
+// @query :id int true "" "书籍 id"
 // @remark 危险操作
 func (h *Handler) Delete() {
 }

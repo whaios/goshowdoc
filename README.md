@@ -6,6 +6,8 @@ ShowDoc API 接口文档工具。
 
 GoShowDoc 工具通过解析 Go 代码文件中的注释自动生成 RunApi 文档，可通过 RunApi 客户端进行调试。
 
+最棒的是能够解析结构体自动生成参数列表和 JSON 样例。
+
 ## 目录
 
 - [命令说明](#命令说明)
@@ -30,25 +32,29 @@ USAGE:
    goshowdoc.exe [global options] command [command options] [arguments...]
 
 VERSION:
-   1.0.0
+   1.1.0
 
 DESCRIPTION:
    项目地址： https://github.com/whaios/goshowdoc
    支持以下功能：
    1. 通过代码注释生成 API 接口文档。
-   2. 导出和导入 ShowDoc 项目。
+   2. 自动化生成数据字典，支持 mysql, postgres, sqlserver, sqlite3。
+   3. 导出和导入 ShowDoc 项目。
 
 COMMANDS:
-   flags      查询应用全局相关参数。
-   item       ShowDoc 项目导出和导入。
-   update, u  解析 Go 源码中的注释，生成并更新 ShowDoc 文档。
-   help, h    Shows a list of commands or help for one command
+   flags         查询应用全局相关参数。
+   update, u     解析 Go 源码中的注释，生成并更新 ShowDoc 文档。
+   datadict, dd  自动生成数据字典。
+   item          ShowDoc 项目导出和导入。
+   help, h       Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --host value   ShowDoc 地址。 (default: "https://www.showdoc.com.cn") [%GOSHOWDOC_HOST%]
-   --debug        开启调试模式。 (default: false)
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --host value      ShowDoc 地址。 (default: "https://www.showdoc.com.cn") [%GOSHOWDOC_HOST%]
+   --apikey value    ShowDoc 开放 API 认证凭证。 (default: "") [%GOSHOWDOC_APIKEY%]
+   --apitoken value  ShowDoc 开放 API 认证凭证。 (default: "") [%GOSHOWDOC_APITOKEN%]
+   --debug           开启调试模式。 (default: false)
+   --help            显示帮助 (default: false)
+   --version, -v     print the version (default: false)
 ```
 
 ## 安装
@@ -105,8 +111,8 @@ type Handler struct {
 //
 // @description 分页获取书籍列表
 // @url GET {{BASEURL}}/api/v1/book/list
-// @param	page		int	true	""	"第几页"
-// @param	page_size	int	true	""	"每页显示条数"
+// @query	page		int	true	""	"第几页"
+// @query	page_size	int	true	""	"每页显示条数"
 // @resp ListRsp{}
 func (h *Handler) List() {
 }
@@ -114,7 +120,7 @@ func (h *Handler) List() {
 // Detail 获取指定书籍详情
 //
 // @url GET {{BASEURL}}/api/v1/book/detail/:id
-// @param :id int true "" "书籍 id"
+// @query :id int true "" "书籍 id"
 // @resp Detail{}
 func (h *Handler) Detail() {
 }
@@ -132,7 +138,7 @@ func (h *Handler) CreateOrUpdate() {
 // @catalog 管理
 // @title 删除书籍
 // @url DELETE {{BASEURL}}/api/v1/book/del/:id
-// @param :id int true "" "书籍 id"
+// @query :id int true "" "书籍 id"
 // @remark 危险操作
 func (h *Handler) Delete() {
 }
@@ -186,8 +192,9 @@ $ goshowdoc.exe u --dir ./handler/
 | @url                  | 接口URL，格式为：`[method] [url]` | // @url GET {{BASEURL}}/api/v1/book/list |
 | @description, @desc   | 可选，接口描述信息 | // @description 分页获取书籍列表 |
 | @header               | 可选，请求头。格式为 `[字段名] [类型] [必填] ["值"] ["备注"]` | // @header Authorization string true "abc" "用户登录凭证" |
+| @query                | 可选，请求Query参数。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] [必填] ["值"] ["备注"]`）两种方式。 | // @query id int true "" "书籍 id" |
 | @param_mode           | 可选，请求参数方式。`urlencoded(GET请求默认)`、`json(POST请求默认)` 和 `formdata` | // @param_mode urlencoded |
-| @param                | 可选，请求参数。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] [必填] ["值"] ["备注"]`）两种方式。 | // @param id int true "" "书籍 id" |
+| @param                | 可选，请求Body参数。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] [必填] ["值"] ["备注"]`）两种方式。 | // @param id int true "" "书籍 id" |
 | @response, @resp      | 可选，返回内容。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] ["备注"]`）两种方式。 | // @response TestApiRsp{}  // @param page int "第几页" |
 | @remark               | 可选，备注信息 | // @remark 用户需要先登录 |
 

@@ -51,7 +51,8 @@ type ApiRequest struct {
 	Method    string
 	Url       string
 	Headers   []runapi.RequestParam
-	ParamMode string // 参数类型：urlencoded formdata json
+	Query     []runapi.RequestParam // GET 请求建议仅用Query参数
+	ParamMode string                // 参数类型：urlencoded formdata json
 	Params    []runapi.RequestParam
 	ParamJson string
 }
@@ -85,6 +86,8 @@ func (p *ApiDoc) ParseComment(funcName, comment string) error {
 		err = p.ParseUrlComment(lineRemainder)
 	case "@header":
 		err = p.ParseHeaderComment(lineRemainder)
+	case "@query":
+		err = p.ParseQueryComment(lineRemainder)
 	case "@param_mode":
 		err = p.ParseParamModeComment(lineRemainder)
 	case "@param":
@@ -155,6 +158,16 @@ func (p *ApiDoc) ParseHeaderComment(commentLine string) error {
 	return nil
 }
 
+// ParseQueryComment 解析Query参数（GET请求建议仅用Query参数）
+func (p *ApiDoc) ParseQueryComment(commentLine string) error {
+	params, _, err := p.parseRequestParam(commentLine)
+	if err != nil {
+		return err
+	}
+	p.Request.Query = append(p.Request.Query, params...)
+	return nil
+}
+
 // ParseParamModeComment 解析请求参数模式
 func (p *ApiDoc) ParseParamModeComment(commentLine string) error {
 	switch commentLine {
@@ -170,30 +183,48 @@ func (p *ApiDoc) ParseParamModeComment(commentLine string) error {
 	return nil
 }
 
+// ParseParamComment 解析Body参数
+func (p *ApiDoc) ParseParamComment(commentLine string) error {
+	params, paramJson, err := p.parseRequestParam(commentLine)
+	if err != nil {
+		return err
+	}
+	if p.Request.Method == runapi.MethodGet {
+		p.Request.Query = append(p.Request.Query, params...)
+	} else {
+		p.Request.Params = append(p.Request.Params, params...)
+	}
+	if p.Request.ParamMode == runapi.ParamModeJson {
+		p.Request.ParamJson = paramJson
+	}
+	return nil
+}
+
 // ParseParamComment 解析请求参数
 //
 // 如：	page		int		true	"1"		"第几页"
 //		[字段名]		[类型]	[必填]	[值]	[备注]
-func (p *ApiDoc) ParseParamComment(commentLine string) error {
+func (p *ApiDoc) parseRequestParam(commentLine string) (params []runapi.RequestParam, paramJson string, err error) {
 	if !strings.HasSuffix(commentLine, "{}") {
 		matches := reqParamPattern.FindStringSubmatch(commentLine)
 		if len(matches) != 6 {
-			return fmt.Errorf("无法解析 param 注释 \"%s\"\n不符合格式 [字段名] [类型] [必填] [\"值\"] [\"备注\"]", commentLine)
+			err = fmt.Errorf("无法解析 param 注释 \"%s\"\n不符合格式 [字段名] [类型] [必填] [\"值\"] [\"备注\"]", commentLine)
+			return
 		}
 
 		param := runapi.NewRequestParam(matches[1], matches[2], matches[3], matches[4], matches[5])
-		p.Request.Params = append(p.Request.Params, param)
-		return nil
+		params = append(params, param)
+		return
 	}
 
 	// 解析对象
 	refType := strings.TrimRight(commentLine, "{}")
 	if refType == "" || p.parser == nil {
-		return nil
+		return
 	}
 	obj, err := p.parser.ParseObject(refType, p.astFile)
 	if err != nil || obj == nil {
-		return err
+		return
 	}
 
 	requireVal := func(required bool) string {
@@ -204,18 +235,15 @@ func (p *ApiDoc) ParseParamComment(commentLine string) error {
 	}
 	for _, field := range obj.AllFields() {
 		param := runapi.NewRequestParam(field.Name, field.Type, requireVal(field.Required), field.Value, field.Comment)
-		p.Request.Params = append(p.Request.Params, param)
+		params = append(params, param)
 	}
-	if p.Request.ParamMode == runapi.ParamModeJson {
-		p.Request.ParamJson = jsonFormat(obj.Json())
-	}
-	return nil
+	paramJson = jsonFormat(obj.Json())
+	return
 }
 
 var respParamPattern = regexp.MustCompile(`(\S+)[\s]+([\w]+)[\s]+"([^"]*)"`)
 
 // ParseResponseComment 解析返回样例
-// ParseReqParamComment 解析请求参数。
 //
 // 如：	page		int		"第几页"
 //		[字段名]		[类型]	[备注]

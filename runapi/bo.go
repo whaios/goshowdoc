@@ -135,6 +135,9 @@ func NewPageContent(method, url string) *PageContent {
 	c.Request.Params.JsonDesc = []RequestParam{{Type: ParamTypeString, Require: "1"}}
 	c.Request.Headers = []RequestParam{{Type: ParamTypeString, Require: "1"}}
 	c.Request.Cookies = []NameValue{{}}
+	c.Request.Auth = []struct{}{}
+	c.Request.Query = []RequestParam{}
+	c.Request.PathVariable = []struct{}{}
 	c.Response.ResponseParamsDesc = []ResponseParam{{Type: ParamTypeString}}
 
 	c.Info.Method = method
@@ -160,10 +163,12 @@ type PageContent struct {
 			Formdata   []RequestParam `json:"formdata"`
 			Json       string         `json:"json"`
 			JsonDesc   []RequestParam `json:"jsonDesc"`
-		} `json:"params"` // 请求参数
-		Headers []RequestParam `json:"headers"` // Headers
-		Cookies []NameValue    `json:"cookies"` // Cookies
-		Auth    []struct{}     `json:"auth"`
+		} `json:"params"` // 请求参数（GET请求请用Query参数）
+		Headers      []RequestParam `json:"headers"` // Headers
+		Cookies      []NameValue    `json:"cookies"` // Cookies
+		Auth         []struct{}     `json:"auth"`
+		Query        []RequestParam `json:"query"`
+		PathVariable []struct{}     `json:"pathVariable"`
 	} `json:"request"` // 请求内容
 	Response struct {
 		ResponseText     string   `json:"responseText"`

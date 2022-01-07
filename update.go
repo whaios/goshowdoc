@@ -36,6 +36,7 @@ func apiDocToPageContent(doc *parser.ApiDoc) *runapi.PageContent {
 	if len(doc.Request.Headers) > 0 {
 		content.Request.Headers = doc.Request.Headers
 	}
+	content.Request.Query = doc.Request.Query
 	content.Request.Params.Mode = doc.Request.ParamMode
 	if len(doc.Request.Params) > 0 {
 		switch content.Request.Params.Mode {
