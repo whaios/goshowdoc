@@ -39,7 +39,7 @@ USAGE:
    goshowdoc.exe [global options] command [command options] [arguments...]
 
 VERSION:
-   1.1.0
+   1.2.0
 
 DESCRIPTION:
    项目地址： https://github.com/whaios/goshowdoc
@@ -136,7 +136,7 @@ func (h *Handler) List() {
 // Detail 获取指定书籍详情
 //
 // @url GET {{BASEURL}}/api/v1/book/detail/:id
-// @query :id int true "" "书籍 id"
+// @path_var :id int true "" "书籍 id"
 // @resp Detail{}
 func (h *Handler) Detail() {
 }
@@ -154,7 +154,7 @@ func (h *Handler) CreateOrUpdate() {
 // @catalog 管理
 // @title 删除书籍
 // @url DELETE {{BASEURL}}/api/v1/book/del/:id
-// @query :id int true "" "书籍 id"
+// @path_var :id int true "" "书籍 id"
 // @remark 危险操作
 func (h *Handler) Delete() {
 }
@@ -197,6 +197,7 @@ $ goshowdoc.exe u --dir ./handler/
 | @catalog | 文档目录，多级目录用 `/` 隔开 | // @catalog 一级/二级/三级 |
 | @header | 可选，请求头。格式为 `[字段名] [类型] [必填] ["值"] ["备注"]` | // @header Authorization string true "abc" "用户登录凭证" |
 | @response, @resp | 返回内容，支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] ["备注"]`）两种方式。 | // @response TestApiRsp{}  // @param page int "第几页" |
+| @response_fail, @resp_fail  | 可选，返回内容。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] ["备注"]`）两种方式。 | // @resp_fail TestApiRsp{}  // @resp_fail page int "第几页" |
 | @remark | 可选，备注信息 | // @remark 用户需要先登录 |
 
 #### API注释
@@ -206,12 +207,15 @@ $ goshowdoc.exe u --dir ./handler/
 | @title                | 接口文档标题，方法注释。 | // funcName 获取书籍列表 // @title 获取书籍列表  |
 | @catalog              | 文档目录，多级目录用 `/` 隔开 | // @catalog 一级/二级/三级 |
 | @url                  | 接口URL，格式为：`[method] [url]` | // @url GET {{BASEURL}}/api/v1/book/list |
+| @api_status           | 接口状态：0=无，1=开发中，2=测试中，3=已完成，4=需修改，5=已废弃 | // @api_status 3 |
 | @description, @desc   | 可选，接口描述信息 | // @description 分页获取书籍列表 |
 | @header               | 可选，请求头。格式为 `[字段名] [类型] [必填] ["值"] ["备注"]` | // @header Authorization string true "abc" "用户登录凭证" |
+| @path_var             | 可选，请求路径参数。格式为 `[字段名] [类型] [必填] ["值"] ["备注"]` | // @path_var id int true "" "书籍 id" |
 | @query                | 可选，请求Query参数。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] [必填] ["值"] ["备注"]`）两种方式。 | // @query id int true "" "书籍 id" |
-| @param_mode           | 可选，请求参数方式。`urlencoded(GET请求默认)`、`json(POST请求默认)` 和 `formdata` | // @param_mode urlencoded |
+| @param_mode           | 可选，请求Body参数方式。`urlencoded`、`json` 和 `formdata` | // @param_mode urlencoded |
 | @param                | 可选，请求Body参数。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] [必填] ["值"] ["备注"]`）两种方式。 | // @param id int true "" "书籍 id" |
-| @response, @resp      | 可选，返回内容。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] ["备注"]`）两种方式。 | // @response TestApiRsp{}  // @param page int "第几页" |
+| @response, @resp      | 可选，返回内容。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] ["备注"]`）两种方式。 | // @resp TestApiRsp{}  // @resp page int "第几页" |
+| @response_fail, @resp_fail  | 可选，返回内容。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] ["备注"]`）两种方式。 | // @resp_fail TestApiRsp{}  // @resp_fail page int "第几页" |
 | @remark               | 可选，备注信息 | // @remark 用户需要先登录 |
 
 ## 生成数据字典

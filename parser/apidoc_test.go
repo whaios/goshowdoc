@@ -38,12 +38,12 @@ func TestApiDoc_ParseUrlComment(t *testing.T) {
 		url := "{{BASEURL}}/api/v1/book"
 
 		doc := &ApiDoc{}
-		So(doc.ParseUrlComment("GET "+url), ShouldBeNil)
+		So(doc.parseUrlComment("GET "+url), ShouldBeNil)
 		So(doc.Request.Url, ShouldEqual, url)
 		So(doc.Request.Method, ShouldEqual, runapi.MethodGet)
 		So(doc.Request.ParamMode, ShouldEqual, runapi.ParamModeUrlEncoded)
 
-		So(doc.ParseUrlComment("POST "+url), ShouldBeNil)
+		So(doc.parseUrlComment("POST "+url), ShouldBeNil)
 		So(doc.Request.Url, ShouldEqual, url)
 		So(doc.Request.Method, ShouldEqual, runapi.MethodPost)
 		So(doc.Request.ParamMode, ShouldEqual, runapi.ParamModeJson)
@@ -55,7 +55,7 @@ func TestApiDoc_ParseReqParamComment(t *testing.T) {
 		paramComment := `page_size	int	true	"30"	"每页显示条数"`
 
 		doc := &ApiDoc{}
-		So(doc.ParseParamComment(paramComment), ShouldBeNil)
+		So(doc.parseParamComment(paramComment), ShouldBeNil)
 		So(len(doc.Request.Params) > 0, ShouldBeTrue)
 		param := doc.Request.Params[0]
 		So(param.Name, ShouldEqual, "page_size")
@@ -65,7 +65,7 @@ func TestApiDoc_ParseReqParamComment(t *testing.T) {
 		So(param.Remark, ShouldEqual, "每页显示条数")
 
 		paramComment = `page	int	true	""	""`
-		So(doc.ParseParamComment(paramComment), ShouldBeNil)
+		So(doc.parseParamComment(paramComment), ShouldBeNil)
 		So(len(doc.Request.Params) > 1, ShouldBeTrue)
 		So(doc.Request.Params[1].Name, ShouldEqual, "page")
 	})
@@ -76,7 +76,7 @@ func TestApiDoc_ParseResponseParamComment(t *testing.T) {
 		paramComment := `book.title string "书名"`
 
 		doc := &ApiDoc{}
-		So(doc.ParseResponseComment(paramComment), ShouldBeNil)
+		So(doc.parseResponseComment(paramComment), ShouldBeNil)
 		So(len(doc.Response.Params), ShouldEqual, 1)
 		param := doc.Response.Params[0]
 		So(param.Name, ShouldEqual, "book.title")
@@ -84,6 +84,6 @@ func TestApiDoc_ParseResponseParamComment(t *testing.T) {
 		So(param.Remark, ShouldEqual, "书名")
 
 		paramComment = `book.title string ""`
-		So(doc.ParseResponseComment(paramComment), ShouldBeNil)
+		So(doc.parseResponseComment(paramComment), ShouldBeNil)
 	})
 }

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"html"
+	"net/url"
 	"strings"
 )
 
@@ -125,10 +126,21 @@ const (
 	ParamModeJson       = "json"
 )
 
+// 接口状态
+const (
+	StatusNone = "0" // 无
+	// 1=开发中
+	// 2=测试中
+	// 3=已完成
+	// 4=需修改
+	// 5=已废弃
+)
+
 func NewPageContent(method, url string) *PageContent {
 	c := &PageContent{}
 	c.Info.From = "runapi"
 	c.Info.Type = "api"
+	c.Info.ApiStatus = StatusNone
 	c.Request.Params.Mode = ParamModeUrlEncoded
 	c.Request.Params.Urlencoded = []RequestParam{{Type: ParamTypeString, Require: "1"}}
 	c.Request.Params.Formdata = []RequestParam{{Type: ParamTypeString, Require: "1"}}
@@ -137,8 +149,9 @@ func NewPageContent(method, url string) *PageContent {
 	c.Request.Cookies = []NameValue{{}}
 	c.Request.Auth = []struct{}{}
 	c.Request.Query = []RequestParam{}
-	c.Request.PathVariable = []struct{}{}
+	c.Request.PathVariable = []RequestParam{}
 	c.Response.ResponseParamsDesc = []ResponseParam{{Type: ParamTypeString}}
+	c.Response.ResponseFailParamsDesc = []ResponseParam{{Type: ParamTypeString}}
 
 	c.Info.Method = method
 	c.Info.Url = url
@@ -155,6 +168,7 @@ type PageContent struct {
 		Method      string `json:"method"`      // 请求方式：POST GET PUT DELETE HEAD CONNECT OPTIONS TRACE
 		Url         string `json:"url"`         // 请求 URL 地址
 		Remark      string `json:"remark"`      // 可选，备注信息，会自动生成到文档的末尾。
+		ApiStatus   string `json:"apiStatus"`   // 接口状态
 	} `json:"info"` // 接口文档信息
 	Request struct {
 		Params struct {
@@ -168,7 +182,7 @@ type PageContent struct {
 		Cookies      []NameValue    `json:"cookies"` // Cookies
 		Auth         []struct{}     `json:"auth"`
 		Query        []RequestParam `json:"query"`
-		PathVariable []struct{}     `json:"pathVariable"`
+		PathVariable []RequestParam `json:"pathVariable"`
 	} `json:"request"` // 请求内容
 	Response struct {
 		ResponseText     string   `json:"responseText"`
@@ -176,15 +190,45 @@ type PageContent struct {
 		ResponseHeader   struct{} `json:"responseHeader"`
 		ResponseStatus   int      `json:"responseStatus"`
 
-		ResponseExample    string          `json:"responseExample"`    // 返回示例
-		ResponseParamsDesc []ResponseParam `json:"responseParamsDesc"` // 返回参数说明
-		Remark             string          `json:"remark"`             // 可选，备注信息，会自动生成到文档的末尾。
+		ResponseExample        string          `json:"responseExample"`        // 返回示例
+		ResponseParamsDesc     []ResponseParam `json:"responseParamsDesc"`     // 返回参数说明
+		ResponseFailExample    string          `json:"responseFailExample"`    // 失败返回示例
+		ResponseFailParamsDesc []ResponseParam `json:"responseFailParamsDesc"` // 失败返回参数说明
+		Remark                 string          `json:"remark"`                 // 可选，备注信息，会自动生成到文档的末尾。
 	} `json:"response"` // 返回示例和参数说明
 	Scripts struct {
 		Pre  string `json:"pre"`  // 前执行脚本
 		Post string `json:"post"` // 后执行脚本
 	} `json:"scripts"` // 执行脚本
 	Extend struct{} `json:"extend"`
+}
+
+func (p *PageContent) SetQuery(params []RequestParam) {
+	p.Request.Query = params
+
+	// 补充到url中去
+	var buf strings.Builder
+	for _, param := range params {
+		keyEscaped := url.QueryEscape(param.Name)
+		if buf.Len() > 0 {
+			buf.WriteByte('&')
+		}
+		buf.WriteString(keyEscaped)
+		buf.WriteByte('=')
+		buf.WriteString(url.QueryEscape(param.Value))
+	}
+	var queryStr = buf.String()
+	if queryStr == "" {
+		return
+	}
+
+	if !strings.Contains(p.Info.Url, "?") {
+		p.Info.Url += "?" + queryStr
+	} else if strings.HasSuffix(p.Info.Url, "?") {
+		p.Info.Url += queryStr
+	} else {
+		p.Info.Url += "&" + queryStr
+	}
 }
 
 func (p *PageContent) String() string {
@@ -203,9 +247,18 @@ const (
 	ParamTypeBoolean = "boolean"
 )
 
+func TransToApiStatus(status string) string {
+	switch status {
+	case "0", "1", "2", "3", "4", "5":
+		return status
+	default:
+		return "0"
+	}
+}
+
 func transToHeaderType(typeName string) string {
 	switch typeName {
-	case "uint", "int", "uint8", "int8", "uint16", "int16", "byte",
+	case ParamTypeNumber, "uint", "int", "uint8", "int8", "uint16", "int16", "byte",
 		"uint32", "int32", "rune",
 		"uint64", "int64",
 		"float32", "float64":
@@ -220,15 +273,14 @@ func transToDataType(typeName string) string {
 		return ParamTypeArray
 	}
 	switch typeName {
-	case "uint", "int", "uint8", "int8", "uint16", "int16", "byte":
+	case "uint", "int", "uint8", "int8", "uint16", "int16", "byte",
+		"uint32", "int32", "rune":
 		return ParamTypeInt
-	case "uint32", "int32", "rune":
-		return ParamTypeInt
-	case "uint64", "int64":
+	case ParamTypeLong, "uint64", "int64":
 		return ParamTypeLong
-	case "float32", "float64":
+	case ParamTypeNumber, "float32", "float64":
 		return ParamTypeNumber
-	case "bool":
+	case ParamTypeBoolean, "bool":
 		return ParamTypeBoolean
 	case "string":
 		return ParamTypeString

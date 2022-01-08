@@ -32,11 +32,12 @@ func apiDocToPageContent(doc *parser.ApiDoc) *runapi.PageContent {
 	content.Info.Title = doc.Title
 	content.Info.Description = doc.Description
 	content.Info.Remark = doc.Remark
-
+	content.Info.ApiStatus = doc.Request.ApiStatus
 	if len(doc.Request.Headers) > 0 {
 		content.Request.Headers = doc.Request.Headers
 	}
-	content.Request.Query = doc.Request.Query
+	content.Request.PathVariable = doc.Request.PathVariable
+	content.SetQuery(doc.Request.Query)
 	content.Request.Params.Mode = doc.Request.ParamMode
 	if len(doc.Request.Params) > 0 {
 		switch content.Request.Params.Mode {
@@ -53,6 +54,10 @@ func apiDocToPageContent(doc *parser.ApiDoc) *runapi.PageContent {
 	content.Response.ResponseExample = doc.Response.Example
 	if len(doc.Response.Params) > 0 {
 		content.Response.ResponseParamsDesc = doc.Response.Params
+	}
+	content.Response.ResponseFailExample = doc.ResponseFail.Example
+	if len(doc.ResponseFail.Params) > 0 {
+		content.Response.ResponseFailParamsDesc = doc.ResponseFail.Params
 	}
 	content.Response.Remark = doc.Remark
 	return content
