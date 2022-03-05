@@ -176,9 +176,14 @@ func (p *Parser) ParseObject(typeName string, file *ast.File) (*Object, error) {
 		return nil, fmt.Errorf("没有找到类型定义: %s", typeName)
 	}
 
-	obj := New()
 	// 解析结构体字段
-	st := typeSpecDef.TypeSpec.Type.(*ast.StructType)
+	st, ok := typeSpecDef.TypeSpec.Type.(*ast.StructType)
+	if !ok {
+		// 不是有效的类型，可能是自定义基础类型
+		return nil, nil
+	}
+
+	obj := New()
 	for _, field := range st.Fields.List {
 		var name, jsonName, dataType, tag, comment string
 		var required bool
@@ -254,7 +259,12 @@ func (p *Parser) ParseObject(typeName string, file *ast.File) (*Object, error) {
 			if err != nil {
 				return nil, err
 			}
-			obj.PutObject(objField, nObj)
+			if nObj == nil {
+				// 没有解析为有效类型，按普通字段处理
+				obj.PutField(objField)
+			} else {
+				obj.PutObject(objField, nObj)
+			}
 		}
 	}
 	return obj, nil
@@ -291,6 +301,14 @@ func parseFieldType(expr ast.Expr) string {
 	switch expr.(type) {
 	case *ast.Ident:
 		id := expr.(*ast.Ident)
+		if id.Obj != nil && id.Obj.Decl != nil {
+			if ts, ok := id.Obj.Decl.(*ast.TypeSpec); ok {
+				// 自定义类型（可能是基础类型，也可能是struct，struct返回空字符串）
+				if _, ok = ts.Type.(*ast.Ident); ok {
+					return parseFieldType(ts.Type)
+				}
+			}
+		}
 		return id.Name
 	case *ast.ArrayType:
 		arrt := expr.(*ast.ArrayType)
@@ -300,7 +318,7 @@ func parseFieldType(expr ast.Expr) string {
 		kn := parseFieldType(mpt.Key)
 		vn := parseFieldType(mpt.Value)
 		return fmt.Sprintf("map[%s]%s", kn, vn)
-	case *ast.SelectorExpr:
+	case *ast.SelectorExpr: // 包名.类型
 		selt := expr.(*ast.SelectorExpr)
 		pkgName := parseFieldType(selt.X)
 		if pkgName == "" {

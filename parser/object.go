@@ -88,7 +88,7 @@ func (obj *Object) PutField(field *Field) {
 	case "bool":
 		fv = "false"
 		obj.json.PutBool(field.Name, false)
-	case "string":
+	default:
 		fv = ""
 		obj.json.PutString(field.Name, field.Comment)
 	}

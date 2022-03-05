@@ -14,7 +14,7 @@ type ListRsp struct {
 
 // ListItem 列表项
 type ListItem struct {
-	Id        int64    `json:"id,string"` // 标识符
+	Id        book.Id  `json:"id,string"` // 标识符
 	Title     string   `json:"title"`     // 书名
 	Publisher string   `json:"publisher"` // 出版社
 	Tags      []string `json:"tags"`      // 标签
