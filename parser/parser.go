@@ -196,7 +196,10 @@ func (p *Parser) ParseObject(typeName string, file *ast.File) (*Object, error) {
 			if err != nil {
 				return nil, err
 			}
-			obj.PutAnonymousObject(nObj)
+			// 没有解析为有效类型，忽略该字段
+			if nObj != nil {
+				obj.PutAnonymousObject(nObj)
+			}
 			continue
 		} else {
 			name = field.Names[0].Name
@@ -219,6 +222,9 @@ func (p *Parser) ParseObject(typeName string, file *ast.File) (*Object, error) {
 			if jsonName == "" {
 				jsonName = name
 			}
+		}
+		if jsonName == "" || jsonName == "-" {
+			continue
 		}
 		if field.Doc != nil {
 			// 字段上行的注释
@@ -252,7 +258,12 @@ func (p *Parser) ParseObject(typeName string, file *ast.File) (*Object, error) {
 				if err != nil {
 					return nil, err
 				}
-				obj.PutObjectArray(objField, nObj)
+				if nObj == nil {
+					// 没有解析为有效类型，按普通字段处理
+					obj.PutArray(objField)
+				} else {
+					obj.PutObjectArray(objField, nObj)
+				}
 			}
 		} else {
 			nObj, err := p.ParseObject(dataType, typeSpecDef.File)
