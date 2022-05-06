@@ -25,6 +25,7 @@ GoShowDoc 工具通过解析 Go 代码文件中的注释自动生成 RunApi 文�
   - [PostgreSQL](#PostgreSQL)
   - [SQLServer](#SQLServer)
   - [SQlite](#SQlite)
+  - [Oracle](#Oracle)
 - [ShowDoc项目导出导入](#ShowDoc项目导出导入)
 
 ## 命令说明
@@ -39,13 +40,13 @@ USAGE:
    goshowdoc.exe [global options] command [command options] [arguments...]
 
 VERSION:
-   1.2.0
+   1.4.0
 
 DESCRIPTION:
    项目地址： https://github.com/whaios/goshowdoc
    支持以下功能：
    1. 通过代码注释生成 API 接口文档。
-   2. 自动化生成数据字典，支持 mysql, postgres, sqlserver, sqlite3。
+   2. 自动化生成数据字典，支持 mysql, postgres, sqlserver, sqlite3, oracle。
    3. 导出和导入 ShowDoc 项目。
 
 COMMANDS:
@@ -72,6 +73,8 @@ GLOBAL OPTIONS:
 - windows/amd64
 - linux/amd64
 - darwin/amd64
+
+如果需要连接 SQlite 或 Oracle 数据库生成数据字典，请下载对应的cgo版本可执行程序。
 
 ### 源码编译
 
@@ -136,7 +139,7 @@ func (h *Handler) List() {
 // Detail 获取指定书籍详情
 //
 // @url GET {{BASEURL}}/api/v1/book/detail/:id
-// @path_var :id int true "" "书籍 id"
+// @path_var id int true "" "书籍 id"
 // @resp Detail{}
 func (h *Handler) Detail() {
 }
@@ -154,7 +157,7 @@ func (h *Handler) CreateOrUpdate() {
 // @catalog 管理
 // @title 删除书籍
 // @url DELETE {{BASEURL}}/api/v1/book/del/:id
-// @path_var :id int true "" "书籍 id"
+// @path_var id int true "" "书籍 id"
 // @remark 危险操作
 func (h *Handler) Delete() {
 }
@@ -230,7 +233,7 @@ USAGE:
    goshowdoc-windows-amd64.exe datadict [command options] [arguments...]
 
 OPTIONS:
-   --driver value          数据库类型，支持：mysql, postgres, sqlserver, sqlite3 (default: "mysql")
+   --driver value          数据库类型，支持：mysql, postgres, sqlserver, sqlite3, oracle (default: "mysql")
    --host value, -h value  数据库地址和端口，如果是SQlite数据库则为文件 (default: "127.0.0.1:3306")
    --user value, -u value  数据库用户名
    --pwd value, -p value   数据库密码
@@ -260,11 +263,22 @@ OPTIONS:
 
 ### SQlite
 
-因为 go-sqlite3 库是一个 cgo 库，需要 gcc 环境，编译的可执行程序默认没有开启 CGO，所以无法正常连接 SQlite 数据库。
-如果有需要，请自行下载代码编译。
+因为 go-sqlite3 库是一个 cgo 库，编译代码时需要 gcc 环境。
 
 ```shell
-.\goshowdoc-windows-amd64.exe dd --driver sqlite3 -h .\test.db
+.\goshowdoc-windows-amd64-cgo.exe dd --driver sqlite3 -h .\test.db
+```
+
+### Oracle
+
+因为 godror 库是一个 cgo 库，编译代码时需要 gcc 环境。
+
+**注意：**
+连接 Oracle 需要安装 Oracle 客户端库，可查看 [ODPI-C](https://oracle.github.io/odpi/doc/installation.html) 文档，
+从 https://www.oracle.com/database/technologies/instant-client/downloads.html 下载免费的Basic或Basic Light软件包。
+
+```shell
+.\goshowdoc-windows-amd64-cgo.exe dd --driver oracle -h 127.0.0.1:1521 -u scott -p tiger --db orclpdb1
 ```
 
 ## ShowDoc项目导出导入

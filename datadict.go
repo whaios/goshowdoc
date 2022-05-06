@@ -20,6 +20,8 @@ func UpdateDataDict(driver, host, user, pwd, db, schema, cat string) {
 		dd = datadict.NewSQLServer(host, user, pwd, db)
 	case datadict.SQlite:
 		dd = datadict.NewSqlite(host)
+	case datadict.Oracle:
+		dd = datadict.NewOracle(host, user, pwd, db)
 	default:
 		log.Error("不支持的数据库类型 %s", driver)
 		return

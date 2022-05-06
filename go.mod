@@ -7,6 +7,7 @@ require (
 	github.com/denisenkom/go-mssqldb v0.11.0
 	github.com/fatih/color v1.13.0
 	github.com/go-sql-driver/mysql v1.6.0
+	github.com/godror/godror v0.33.0 // indirect
 	github.com/levigross/grequests v0.0.0-20190908174114-253788527a1a
 	github.com/lib/pq v1.10.4
 	github.com/mattn/go-sqlite3 v1.14.9
