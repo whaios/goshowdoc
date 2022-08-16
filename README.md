@@ -8,6 +8,8 @@ GoShowDoc 工具通过解析 Go 代码文件中的注释自动生成 RunApi 文�
 
 最棒的是能够解析结构体自动生成参数列表和 JSON 样例。
 
+如果需要自动化生成 ShowDoc 数据字典文档，请访问 [showdocdb项目](https://github.com/whaios/showdocdb) ，支持 mysql、postgres、sqlserver、sqlite3、oracle。
+
 ## 目录
 
 - [命令说明](#命令说明)
@@ -20,19 +22,11 @@ GoShowDoc 工具通过解析 Go 代码文件中的注释自动生成 RunApi 文�
   - [注释格式](#注释格式)
     - [通用API注释](#通用API注释)
     - [API注释](#API注释)
-- [生成数据字典](#生成数据字典)
-  - [MySQL](#MySQL)
-  - [PostgreSQL](#PostgreSQL)
-  - [SQLServer](#SQLServer)
-  - [SQlite](#SQlite)
-  - [Oracle](#Oracle)
-- [ShowDoc项目导出导入](#ShowDoc项目导出导入)
 
 ## 命令说明
 
 ```
 $ goshowdoc.exe
-
 NAME:
    goshowdoc - ShowDoc API 接口文档工具
 
@@ -40,28 +34,22 @@ USAGE:
    goshowdoc.exe [global options] command [command options] [arguments...]
 
 VERSION:
-   1.4.0
+   2.0.0
 
 DESCRIPTION:
-   项目地址： https://github.com/whaios/goshowdoc
-   支持以下功能：
-   1. 通过代码注释生成 API 接口文档。
-   2. 自动化生成数据字典，支持 mysql, postgres, sqlserver, sqlite3, oracle。
-   3. 导出和导入 ShowDoc 项目。
+   通过代码注释生成 API 接口文档
 
 COMMANDS:
-   flags         查询应用全局相关参数。
-   update, u     解析 Go 源码中的注释，生成并更新 ShowDoc 文档。
-   datadict, dd  自动生成数据字典。
-   item          ShowDoc 项目导出和导入。
-   help, h       Shows a list of commands or help for one command
+   flags      查询应用全局相关参数。
+   update, u  解析 Go 源码中的注释，生成并更新 ShowDoc 文档。
+   help, h    Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --host value      ShowDoc 地址。 (default: "https://www.showdoc.com.cn") [%GOSHOWDOC_HOST%]
    --apikey value    ShowDoc 开放 API 认证凭证。 (default: "") [%GOSHOWDOC_APIKEY%]
    --apitoken value  ShowDoc 开放 API 认证凭证。 (default: "") [%GOSHOWDOC_APITOKEN%]
    --debug           开启调试模式。 (default: false)
    --help            显示帮助 (default: false)
+   --host value      ShowDoc 地址。 (default: "https://www.showdoc.com.cn") [%GOSHOWDOC_HOST%]
    --version, -v     print the version (default: false)
 ```
 
@@ -73,8 +61,6 @@ GLOBAL OPTIONS:
 - windows/amd64
 - linux/amd64
 - darwin/amd64
-
-如果需要连接 SQlite 或 Oracle 数据库生成数据字典，请下载对应的cgo版本可执行程序。
 
 ### 源码编译
 
@@ -220,69 +206,3 @@ $ goshowdoc.exe u --dir ./handler/
 | @response, @resp      | 可选，返回内容。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] ["备注"]`）两种方式。 | // @resp TestApiRsp{}  // @resp page int "第几页" |
 | @response_fail, @resp_fail  | 可选，返回内容。支持结构体（如：`Struct{}`，一对大括号结尾） 或 单个参数（如：`[字段名] [类型] ["备注"]`）两种方式。 | // @resp_fail TestApiRsp{}  // @resp_fail page int "第几页" |
 | @remark               | 可选，备注信息 | // @remark 用户需要先登录 |
-
-## 生成数据字典
-
-```
-$ .\goshowdoc-windows-amd64.exe dd --help
-
-NAME:
-   goshowdoc-windows-amd64.exe datadict - 自动生成数据字典。
-
-USAGE:
-   goshowdoc-windows-amd64.exe datadict [command options] [arguments...]
-
-OPTIONS:
-   --driver value          数据库类型，支持：mysql, postgres, sqlserver, sqlite3, oracle (default: "mysql")
-   --host value, -h value  数据库地址和端口，如果是SQlite数据库则为文件 (default: "127.0.0.1:3306")
-   --user value, -u value  数据库用户名
-   --pwd value, -p value   数据库密码
-   --db value              要同步的数据库名
-   --schema value          PostgreSQL 数据库模式 (default: "public")
-   --cat value             文档所在目录，如果需要多层目录请用斜杠隔开，例如：“一层/二层/三层”
-   --help                  显示帮助 (default: false)
-```
-
-### MySQL
-
-```shell
-.\goshowdoc-windows-amd64.exe dd --driver mysql -h 127.0.0.1:3306 -u root -p 123456 --db testdb
-```
-
-### PostgreSQL
-
-```shell
-.\goshowdoc-windows-amd64.exe dd --driver postgres -h 127.0.0.1:5432 -u postgres -p 123456 --db postgres
-```
-
-### SQLServer
-
-```shell
-.\goshowdoc-windows-amd64.exe dd --driver sqlserver -h 127.0.0.1:1433 -u sa -p 123456 --db testdb
-```
-
-### SQlite
-
-因为 go-sqlite3 库是一个 cgo 库，编译代码时需要 gcc 环境。
-
-```shell
-.\goshowdoc-windows-amd64-cgo.exe dd --driver sqlite3 -h .\test.db
-```
-
-### Oracle
-
-因为 godror 库是一个 cgo 库，编译代码时需要 gcc 环境。
-
-**注意：**
-连接 Oracle 需要安装 Oracle 客户端库，可查看 [ODPI-C](https://oracle.github.io/odpi/doc/installation.html) 文档，
-从 https://www.oracle.com/database/technologies/instant-client/downloads.html 下载免费的Basic或Basic Light软件包。
-
-```shell
-.\goshowdoc-windows-amd64-cgo.exe dd --driver oracle -h 127.0.0.1:1521 -u scott -p tiger --db orclpdb1
-```
-
-## ShowDoc项目导出导入
-
-项目导入导出功能使用 ShowDoc 内部接口而非开放接口，所以可能会出现ShowDoc内部接口调整导致导入功能无法正常使用。
-
-目前兼容 ShowDoc 版本为 **v2.9.14**
