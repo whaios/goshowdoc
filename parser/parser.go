@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -17,30 +18,82 @@ import (
 
 func NewParser() *Parser {
 	return &Parser{
-		Docs:     make([]*ApiDoc, 0),
+		files:    make([]*AstFileInfo, 0),
 		packages: NewPackages(),
+		Docs:     make([]*ApiDoc, 0),
 	}
 }
 
 type Parser struct {
-	packages *Packages // 注释中可能会引用到的类型
-	Docs     []*ApiDoc // 解析注释生成的文档
+	packages *Packages      // 解析中引用到的所有文件和包
+	files    []*AstFileInfo // 解析注释的go文件
+	Docs     []*ApiDoc      // 解析注释生成的文档
 }
 
 // ParseApiDoc 解析指定目录下的 Go 代码文件注释，并生成文档。
 // @param searchDir 目录下必须有 Go 代码文件
 func (p *Parser) ParseApiDoc(searchDir string) error {
-	if err := p.parseDir(searchDir); err != nil {
+	// 收集指定目录下的 Go 代码文件，并解析类型
+	if err := p.collectGoFile(searchDir); err != nil {
 		return err
 	}
 
-	// 解析所有Go源码文件中的注释
-	for _, fileInfo := range p.packages.SortedFiles() {
-		if err := p.parseApiDoc(fileInfo.Path, fileInfo.File); err != nil {
+	// 解析指定目录下Go源码文件中的注释
+	sort.Slice(p.files, func(i, j int) bool {
+		return strings.Compare(p.files[i].FileName, p.files[j].FileName) < 0
+	})
+	for _, fileInfo := range p.files {
+		if err := p.parseApiDoc(fileInfo.FileName, fileInfo.File); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// GetAllGoFileInfo 获取指定目录下的所有Go代码文件.
+// @param searchDir 如："../example/ginweb/handler"
+func (p *Parser) collectGoFile(searchDir string) error {
+	p.packages.projectDir = searchDir
+
+	// packageDir = "ginweb/handler"
+	packageDir, err := dirToGoPkg(searchDir)
+	if err != nil {
+		return fmt.Errorf("获取包名失败, dir: %s, error: %s", searchDir, err.Error())
+	}
+
+	return filepath.Walk(searchDir, func(path string, f os.FileInfo, _ error) error {
+		if f.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(strings.ToLower(path), "_test.go") || filepath.Ext(path) != ".go" {
+			return nil
+		}
+
+		// path = "../example/ginweb/handler/book/handler.go"
+		// pkgPath = "ginweb/handler/book"
+		var pkgPath string
+		{
+			relPath, err := filepath.Rel(searchDir, path) // "book/handler.go"
+			if err != nil {
+				return err
+			}
+			pkgPath = filepath.ToSlash(filepath.Dir(filepath.Clean(filepath.Join(packageDir, relPath))))
+		}
+
+		astFile, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ParseComments)
+		if err != nil {
+			return fmt.Errorf("ParseFile error:%+v", err)
+		}
+
+		// absPath = "/Users/wanghai/gowork/github.com/whaios/goshowdoc/example/ginweb/handler/book/handler.go"
+		absPath, err := filepath.Abs(path)
+		if err != nil {
+			return err
+		}
+		fileInfo := p.packages.AddFile(pkgPath, absPath, astFile)
+		p.files = append(p.files, fileInfo)
+		return nil
+	})
 }
 
 // parseApiDoc 将Go源码文件中的注释解析为API文档
@@ -89,86 +142,7 @@ func (p *Parser) parseApiDoc(fileName string, astFile *ast.File) error {
 	return nil
 }
 
-// parseDir 收集指定目录下的 Go 代码文件和类型。
-func (p *Parser) parseDir(searchDir string) error {
-	p.packages.projectDir = searchDir
-
-	// 收集指定目录下的 Go 代码文件
-	if err := p.getAllGoFileInfo(searchDir); err != nil {
-		return err
-	}
-	// 解析代码中的类型
-	p.packages.ParseTypes()
-	return nil
-}
-
-// 获取指定目录的包名："./example/ginweb/handler" > "ginweb/handler"
-func getPkgName(searchDir string) (string, error) {
-	cmd := exec.Command("go", "list", "-f={{.ImportPath}}")
-	cmd.Dir = searchDir
-	var stdout, stderr strings.Builder
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-
-	if err := cmd.Run(); err != nil {
-		return "", fmt.Errorf("execute go list command, %s, stdout:%s, stderr:%s", err, stdout.String(), stderr.String())
-	}
-
-	outStr, _ := stdout.String(), stderr.String()
-
-	if outStr[0] == '_' { // will shown like _/{GOPATH}/src/{YOUR_PACKAGE} when NOT enable GO MODULE.
-		outStr = strings.TrimPrefix(outStr, "_"+build.Default.GOPATH+"/src/")
-	}
-	f := strings.Split(outStr, "\n")
-	outStr = f[0]
-
-	return outStr, nil
-}
-
-// GetAllGoFileInfo 获取指定目录下的所有Go代码文件.
-// @param searchDir 如：./example/ginweb/handler
-func (p *Parser) getAllGoFileInfo(searchDir string) error {
-	// packageDir = ginweb/handler
-	packageDir, err := getPkgName(searchDir)
-	if err != nil {
-		return fmt.Errorf("获取包名失败, dir: %s, error: %s", searchDir, err.Error())
-	}
-
-	return filepath.Walk(searchDir, func(path string, f os.FileInfo, _ error) error {
-		if f.IsDir() {
-			return nil
-		}
-		if strings.HasSuffix(strings.ToLower(path), "_test.go") || filepath.Ext(path) != ".go" {
-			return nil
-		}
-
-		// path = example\ginweb\handler\handler.go
-		// filePkg = ginweb/handler
-		var filePkg string
-		{
-			relPath, err := filepath.Rel(searchDir, path)
-			if err != nil {
-				return err
-			}
-			filePkg = filepath.ToSlash(filepath.Dir(filepath.Clean(filepath.Join(packageDir, relPath))))
-		}
-
-		astFile, err := parser.ParseFile(token.NewFileSet(), path, nil, parser.ParseComments)
-		if err != nil {
-			return fmt.Errorf("ParseFile error:%+v", err)
-		}
-
-		// absPath = D:\Work\github.com\whaios\goshowdoc\example\ginweb\handler\handler.go
-		absPath, err := filepath.Abs(path)
-		if err != nil {
-			return err
-		}
-		p.packages.CollectAstFile(filePkg, absPath, astFile)
-		return nil
-	})
-}
-
-// ParseObject 解析对象
+// ParseObject 解析指定类型
 func (p *Parser) ParseObject(typeName string, file *ast.File) (*Object, error) {
 	log.Debug("解析类型: %s", typeName)
 	typeSpecDef := p.packages.FindTypeSpec(typeName, file)
@@ -279,6 +253,28 @@ func (p *Parser) ParseObject(typeName string, file *ast.File) (*Object, error) {
 		}
 	}
 	return obj, nil
+}
+
+// 获取指定目录的包名："./example/ginweb/handler" > "ginweb/handler"
+func dirToGoPkg(searchDir string) (string, error) {
+	cmd := exec.Command("go", "list", "-f={{.ImportPath}}")
+	cmd.Dir = searchDir
+	var stdout, stderr strings.Builder
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("execute go list command, %s, stdout:%s, stderr:%s", err, stdout.String(), stderr.String())
+	}
+
+	outStr, _ := stdout.String(), stderr.String()
+
+	if outStr[0] == '_' { // will shown like _/{GOPATH}/src/{YOUR_PACKAGE} when NOT enable GO MODULE.
+		outStr = strings.TrimPrefix(outStr, "_"+build.Default.GOPATH+"/src/")
+	}
+	f := strings.Split(outStr, "\n")
+	outStr = f[0]
+	return outStr, nil
 }
 
 func isGolangPrimitiveType(typeName string) bool {

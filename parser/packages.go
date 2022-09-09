@@ -3,19 +3,11 @@ package parser
 import (
 	"go/ast"
 	"go/token"
-	"sort"
 	"strings"
 
 	"github.com/whaios/goshowdoc/log"
 	"golang.org/x/tools/go/packages"
 )
-
-// AstFileInfo ast.File 文件信息.
-type AstFileInfo struct {
-	File        *ast.File
-	Path        string // Go 源码文件的绝对路径
-	PackagePath string // Go 源码文件完整包名
-}
 
 func NewPackages() *Packages {
 	return &Packages{
@@ -28,47 +20,30 @@ func NewPackages() *Packages {
 // Packages 存储扫描到的 Go 文件、包路径和他们之间的关系。
 // 主要用于解析注释中可能会引用到的类型。
 type Packages struct {
-	projectDir string // 目标Go项目所在目录（支持绝对路径和相对路径），用于加载外部包时使用，为空时默认为当前运行目录。
-	files      map[*ast.File]*AstFileInfo
+	projectDir string // 目标Go项目所在目录（支持绝对路径和相对路径），用于加载外部包时获取go包名，为空时默认为当前运行目录。
 
-	packages map[string]*Package // key=完整包名. 如：ginweb/book
-	// 在目录下收集到的具有唯一名称（包名+类型名）的类型。如果存在同名的不会出现到该字典中。
-	uniqueDefinitions map[string]*TypeSpecDef // key=类型全名. 如：book.Book
+	files    map[*ast.File]*AstFileInfo // 使用到的所有go文件
+	packages map[string]*Package        // key=完整包名. 如：ginweb/book
+	// 在目录下收集到的具有唯一名称（完整包名+类型名）的类型。如果存在同名的不会出现到该字典中。
+	uniqueDefinitions map[string]*TypeSpecDef // key=类型全名. 如：ginweb.handler.book.Book
 }
 
-// CollectAstFile 收集 Go 源码文件
-//
-// @param packageDir 如：refstruct/employee
-// @param absPath 如：文件绝对路径
-func (p *Packages) CollectAstFile(packageDir, absPath string, astFile *ast.File) {
-	log.Debug("收集Go文件: %s", absPath)
-	p.files[astFile] = &AstFileInfo{
-		File:        astFile,
-		Path:        absPath,
-		PackagePath: packageDir,
+// AddFile 添加 Go 源码文件，并解析代码中的类型
+func (p *Packages) AddFile(pkgPath, fileName string, astFile *ast.File) *AstFileInfo {
+	info := &AstFileInfo{
+		File:     astFile,
+		FileName: fileName,
+		PkgPath:  pkgPath,
 	}
+	p.files[astFile] = info
+	log.Debug("收集Go文件: %s", info.FileName)
+
+	// 解析go文件中的结构体
+	p.parseTypesFromFile(info.File, info.PkgPath)
+	return info
 }
 
-// SortedFiles 获取所有文件，根据文件路径按字母先后顺序排序
-func (p *Packages) SortedFiles() []*AstFileInfo {
-	sortedFiles := make([]*AstFileInfo, 0, len(p.files))
-	for _, info := range p.files {
-		sortedFiles = append(sortedFiles, info)
-	}
-
-	sort.Slice(sortedFiles, func(i, j int) bool {
-		return strings.Compare(sortedFiles[i].Path, sortedFiles[j].Path) < 0
-	})
-	return sortedFiles
-}
-
-// ParseTypes 解析所有代码文件中的类型
-func (p *Packages) ParseTypes() {
-	for astFile, info := range p.files {
-		p.parseTypesFromFile(astFile, info.PackagePath)
-	}
-}
-
+// 解析go文件中的结构体
 func (p *Packages) parseTypesFromFile(astFile *ast.File, pkgPath string) {
 	for _, astDeclaration := range astFile.Decls {
 		if generalDeclaration, ok := astDeclaration.(*ast.GenDecl); ok && generalDeclaration.Tok == token.TYPE {
@@ -109,69 +84,68 @@ func (p *Packages) parseTypesFromFile(astFile *ast.File, pkgPath string) {
 
 // FindTypeSpec 查找类型
 //
-// @param fullTypeName 包名.类型名，如：ListRsp 或 book.Book
-func (p *Packages) FindTypeSpec(fullTypeName string, file *ast.File) *TypeSpecDef {
+// @param shortName 包名.类型名，如：ListRsp 或 book.Book
+func (p *Packages) FindTypeSpec(shortName string, file *ast.File) *TypeSpecDef {
 	if file == nil { // for test
-		return p.uniqueDefinitions[fullTypeName]
+		return p.uniqueDefinitions[shortName]
 	}
+
 	var pkgName, typeName string
 	{
-		typeName = fullTypeName
-		parts := strings.SplitN(fullTypeName, ".", 2)
-		if len(parts) == 2 {
+		typeName = shortName
+		if parts := strings.SplitN(shortName, ".", 2); len(parts) == 2 {
 			pkgName = parts[0]
 			typeName = parts[1]
 		}
 	}
 
-	// 有包名
+	// 有包名，查找外部包
 	if pkgName != "" {
 		// 从文件中导入的包中查找指定包路径
-		pkgPath, isAliasPkgName := p.findPackagePathFromImports(pkgName, file)
-
-		// 没有别名的类型，首先在唯一类型中查找。
-		if !isAliasPkgName {
-			if typeDef, ok := p.uniqueDefinitions[fullTypeName]; ok {
-				return typeDef
-			}
-		}
+		imptPkgPath, _ := p.findPackagePathFromImports(pkgName, file)
 		// 没有找到对应的包名
-		if pkgPath == "" {
+		if imptPkgPath == "" {
 			return nil
 		}
 
 		// 收集外部包
-		p.loadExternalPackage(pkgPath)
-
-		return p.findTypeSpec(pkgPath, typeName)
+		p.loadExternalPackage(imptPkgPath)
+		return p.findTypeSpec(imptPkgPath, typeName)
 	}
 
-	typeDef, ok := p.uniqueDefinitions[getFullTypeName(file.Name.Name, typeName)]
+	var pkgPath, fullName string
+	if fileInfo, ok := p.files[file]; ok {
+		pkgPath = fileInfo.PkgPath
+		fullName = pkgPath + "." + typeName
+	}
+
+	// 从目录包中查找
+	typeDef, ok := p.uniqueDefinitions[fullName]
 	if ok {
 		return typeDef
 	}
 
-	typeDef = p.findTypeSpec(p.files[file].PackagePath, typeName)
+	typeDef = p.findTypeSpec(pkgPath, typeName)
 	if typeDef != nil {
 		return typeDef
 	}
 
+	// 载入 . 包
 	for _, imp := range file.Imports {
 		if imp.Name != nil && imp.Name.Name == "." {
-			pkgPath := strings.Trim(imp.Path.Value, `"`)
+			imptPkgPath := strings.Trim(imp.Path.Value, `"`)
 			// 收集外部包
-			p.loadExternalPackage(pkgPath)
+			p.loadExternalPackage(imptPkgPath)
 
-			if typeDef = p.findTypeSpec(pkgPath, typeName); typeDef != nil {
+			if typeDef = p.findTypeSpec(imptPkgPath, typeName); typeDef != nil {
 				return typeDef
 			}
 		}
 	}
-
 	return nil
 }
 
-// findTypeSpec 查找类型
+// findTypeSpec 从收集的指定包中查找类型
 //
 // @param pkgPath 如：refstruct/employee
 // @param typeName 如：Employee
@@ -186,27 +160,27 @@ func (p *Packages) findTypeSpec(pkgPath string, typeName string) *TypeSpecDef {
 			return typeSpec
 		}
 	}
-
 	return nil
 }
 
-func (p *Packages) loadExternalPackage(importPath string) {
+// imptPkgPath 加载指定包
+func (p *Packages) loadExternalPackage(imptPkgPath string) {
 	if p.packages != nil {
-		if _, ok := p.packages[importPath]; ok {
+		if _, ok := p.packages[imptPkgPath]; ok {
 			// 已经收集过该包
 			return
 		}
 	}
-	log.Debug("加载外部包: %s", importPath)
+	log.Debug("加载外部包: %s", imptPkgPath)
 
 	cfg := &packages.Config{
 		Dir:  p.projectDir,
-		Mode: packages.NeedImports | packages.NeedTypes | packages.NeedSyntax,
+		Mode: packages.NeedImports | packages.NeedTypes | packages.NeedSyntax | packages.NeedCompiledGoFiles,
 	}
-	pkgs, _ := packages.Load(cfg, importPath)
+	pkgs, _ := packages.Load(cfg, imptPkgPath)
 	for _, pkg := range pkgs {
-		for _, astFile := range pkg.Syntax {
-			p.parseTypesFromFile(astFile, pkg.ID)
+		for i, astFile := range pkg.Syntax {
+			p.AddFile(pkg.ID, pkg.CompiledGoFiles[i], astFile)
 		}
 	}
 }
@@ -234,10 +208,9 @@ func (p *Packages) findPackagePathFromImports(pkgName string, file *ast.File) (p
 	return
 }
 
-func getFullTypeName(pkgName, typeName string) string {
-	if pkgName != "" {
-		return pkgName + "." + typeName
-	}
-
-	return typeName
+// AstFileInfo ast.File 文件信息.
+type AstFileInfo struct {
+	File     *ast.File
+	FileName string // Go 源码文件全名称
+	PkgPath  string // Go 源码文件完整包名
 }

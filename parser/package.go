@@ -22,18 +22,11 @@ func (t *TypeSpecDef) Name() string {
 	if t.TypeSpec != nil {
 		return t.TypeSpec.Name.Name
 	}
-
 	return ""
 }
 
-// FullName 类型全名.
-// 如：book.Book
-func (t *TypeSpecDef) FullName() string {
-	return getFullTypeName(t.File.Name.Name, t.TypeSpec.Name.Name)
-}
-
-// FullPath 完整包名.类型名
+// FullName 完整包名.类型名
 // 如：ginweb.book.Book
-func (t *TypeSpecDef) FullPath() string {
+func (t *TypeSpecDef) FullName() string {
 	return t.PkgPath + "." + t.Name()
 }

@@ -34,7 +34,7 @@ USAGE:
    goshowdoc.exe [global options] command [command options] [arguments...]
 
 VERSION:
-   2.0.0
+   2.1.0
 
 DESCRIPTION:
    通过代码注释生成 API 接口文档

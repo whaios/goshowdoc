@@ -22,8 +22,14 @@ type ListItem struct {
 
 // Detail 书籍详情返回结果
 type Detail struct {
-	book.Book
+	Book
+	//book.Book
 	PubDateStr string            `json:"pub_date_str"` // 出版日期
 	Reviews    []*review1.Review `json:"reviews"`      // 书籍评论
 	ReviewPage *Page             `json:"review_page"`  // 书籍评论分页
+}
+
+type Book struct {
+	book.Book        // 测试同名包+同名结构体
+	Desc      string `json:"desc"` // 介绍
 }
